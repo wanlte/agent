@@ -1002,6 +1002,7 @@ public class ErrorResponse {
 package com.agent.exception;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -1027,13 +1028,15 @@ public class GlobalExceptionHandler {
     }
 
     // 2. 捕获 ResponseStatusException（我们手动抛的 404 等）
+    //    用 ResponseEntity 动态设置 HTTP 状态码（因为可能是 404/400/500，不固定）
     @ExceptionHandler(ResponseStatusException.class)
-    public ErrorResponse handleResponseStatus(ResponseStatusException ex) {
-        return new ErrorResponse(
+    public ResponseEntity<ErrorResponse> handleResponseStatus(ResponseStatusException ex) {
+        ErrorResponse body = new ErrorResponse(
             ex.getStatusCode().value(),
             ex.getReason(),
             null
         );
+        return new ResponseEntity<>(body, ex.getStatusCode());
     }
 
     // 3. 兜底：捕获所有其他异常

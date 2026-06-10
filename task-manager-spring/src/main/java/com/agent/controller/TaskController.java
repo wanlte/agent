@@ -1,7 +1,11 @@
 package com.agent.controller;
 
+import com.agent.dto.CreateTaskRequest;
+import com.agent.dto.TaskResponse;
+import com.agent.dto.UpdateTaskRequest;
 import com.agent.model.Task;
 import com.agent.service.TaskService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -14,53 +18,62 @@ public class TaskController {
 
     private final TaskService taskService;
 
-    // 构造器注入：Spring 自动把 TaskService 的实例传进来
     public TaskController(TaskService taskService) {
         this.taskService = taskService;
     }
 
-    // GET /api/tasks              → 获取所有任务
-    // GET /api/tasks?status=DONE  → 获取已完成的任务
     @GetMapping
-    public List<Task> list(@RequestParam(required = false) String status) {
-        return taskService.listAll(status);
+    public List<TaskResponse> list(@RequestParam(required = false) String status) {
+        return taskService.listAll(status)
+            .stream()
+            .map(TaskResponse::from)
+            .toList();
     }
 
-    // GET /api/tasks/1   → 获取 id=1 的任务
     @GetMapping("/{id}")
-    public Task getById(@PathVariable Long id) {
+    public TaskResponse getById(@PathVariable Long id) {
         return taskService.getById(id)
+                .map(TaskResponse::from)
                 .orElseThrow(() -> new ResponseStatusException(
-                    HttpStatus.NOT_FOUND, "任务不存在: " + id
-                ));
+                    HttpStatus.NOT_FOUND, "任务不存在: " + id));
     }
 
-    // POST /api/tasks   → 创建新任务
-    // @ResponseStatus(HttpStatus.CREATED) → 返回 201 而不是默认的 200
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Task create(@RequestBody Task task) {
-        return taskService.create(task);
+    public TaskResponse create(@Valid @RequestBody CreateTaskRequest request) {
+        // 把 Request DTO 转为 Model
+        Task task = new Task();
+        task.setTitle(request.getTitle());
+        task.setDescription(request.getDescription());
+        task.setPriority(request.getPriority().name());
+        task.setStatus("TODO");
+
+        Task created = taskService.create(task);
+        return TaskResponse.from(created);
     }
 
-    // PUT /api/tasks/1   → 更新 id=1 的任务
     @PutMapping("/{id}")
-    public Task update(@PathVariable Long id, @RequestBody Task task) {
-        return taskService.update(id, task)
+    public TaskResponse update(@PathVariable Long id,
+                               @Valid @RequestBody UpdateTaskRequest request) {
+        Task updateData = new Task();
+        updateData.setTitle(request.getTitle());
+        updateData.setDescription(request.getDescription());
+        updateData.setStatus(request.getStatus());
+        if (request.getPriority() != null) {
+            updateData.setPriority(request.getPriority().name());
+        }
+
+        return taskService.update(id, updateData)
+                .map(TaskResponse::from)
                 .orElseThrow(() -> new ResponseStatusException(
-                    HttpStatus.NOT_FOUND, "任务不存在: " + id
-                ));
+                    HttpStatus.NOT_FOUND, "任务不存在: " + id));
     }
 
-    // DELETE /api/tasks/1   → 删除 id=1 的任务
     @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)   // 返回 204（无内容）
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        boolean deleted = taskService.delete(id);
-        if (!deleted) {
-            throw new ResponseStatusException(
-                HttpStatus.NOT_FOUND, "任务不存在: " + id
-            );
+        if (!taskService.delete(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "任务不存在: " + id);
         }
     }
 }
