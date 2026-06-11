@@ -1,31 +1,43 @@
 package com.agent.model;
 
+import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+@Entity
+@Table(name = "tasks")
 public class Task {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(nullable = false, length = 100)
     private String title;
+
+    @Column(length = 500)
     private String description;
-    private String status;       // TODO, IN_PROGRESS, DONE
-    private String priority;     // HIGH, MEDIUM, LOW
+
+    @Column(nullable = false)
+    private String status = "TODO";    // TODO, IN_PROGRESS, DONE
+
+    @Column(nullable = false)
+    private String priority = "MEDIUM"; // HIGH, MEDIUM, LOW
+
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    // 无参构造（Jackson 反序列化 JSON → Java 对象时必须要有）
+    // JPA 要求有无参构造
     public Task() {}
 
-    // 全参构造（方便创建新任务）
-    public Task(Long id, String title, String description, String status, String priority) {
-        this.id = id;
-        this.title = title;
-        this.description = description;
-        this.status = status;
-        this.priority = priority;
-        this.createdAt = LocalDateTime.now();
+    // 创建时自动设时间
+    @PrePersist
+    protected void onCreate() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
     }
 
-    // ─── Getter / Setter ───
-    // Jackson 通过 getter 来序列化（对象→JSON），通过 setter 来反序列化（JSON→对象）
-
+    // Getter / Setter
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
