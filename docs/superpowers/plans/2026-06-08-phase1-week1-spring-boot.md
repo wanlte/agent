@@ -1118,9 +1118,8 @@ public class TaskController {
         updateData.setTitle(request.getTitle());
         updateData.setDescription(request.getDescription());
         updateData.setStatus(request.getStatus());
-        if (request.getPriority() != null) {
-            updateData.setPriority(request.getPriority().name());
-        }
+        // 没传的字段显式设为 null，避免 Task 默认值（"MEDIUM"）干扰部分更新
+        updateData.setPriority(request.getPriority() != null ? request.getPriority().name() : null);
 
         return taskService.update(id, updateData)
                 .map(TaskResponse::from)
@@ -1588,13 +1587,13 @@ package com.agent.controller;
 import com.agent.dto.CreateTaskRequest;
 import com.agent.dto.Priority;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -1602,6 +1601,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@Transactional  // 每个测试方法执行后自动回滚，保持数据库干净
 class TaskControllerTest {
 
     @Autowired
@@ -1609,12 +1609,6 @@ class TaskControllerTest {
 
     @Autowired
     private ObjectMapper objectMapper;
-
-    // 每个测试前清空数据库（H2）
-    @BeforeEach
-    void setUp() throws Exception {
-        mockMvc.perform(delete("/api/test/reset")); // 需要一个清库端点
-    }
 
     // ─── 创建任务 ───
 
@@ -1755,8 +1749,8 @@ mvn test
 ### Task 5.3: 打包部署
 
 ```bash
-# 打包（跳过测试，因为测试里可能需要清理端点）
-mvn package -DskipTests
+# 打包（含测试，@Transactional 保证测试数据自动回滚，无需额外清理）
+mvn package
 
 # 运行
 java -jar target/task-manager-spring-1.0.0.jar
