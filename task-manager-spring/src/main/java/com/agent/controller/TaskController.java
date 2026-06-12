@@ -59,9 +59,8 @@ public class TaskController {
         updateData.setTitle(request.getTitle());
         updateData.setDescription(request.getDescription());
         updateData.setStatus(request.getStatus());
-        if (request.getPriority() != null) {
-            updateData.setPriority(request.getPriority().name());
-        }
+        // 没传的字段显式设为 null，避免 Task 默认值（"MEDIUM"）干扰部分更新
+        updateData.setPriority(request.getPriority() != null ? request.getPriority().name() : null);
 
         return taskService.update(id, updateData)
                 .map(TaskResponse::from)
